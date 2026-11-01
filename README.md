@@ -54,3 +54,7 @@ tests/         unit tests incl. synthetic-guitar recognition tests
 - Strumming-pattern recognition (down vs up strokes)
 - Song mode: follow a chord chart and get scored as you play along
 - Practice streaks and history charts
+
+## Issues & lessons learned
+
+See [docs/ISSUES.md](docs/ISSUES.md) for every problem found and fixed so far, its commit, and what it taught us.
