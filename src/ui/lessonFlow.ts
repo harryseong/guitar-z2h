@@ -63,7 +63,7 @@ export function completeTask(id: string | null, opts: { stillPlaying?: boolean }
       h("div", { class: "flow-done" }, "✓ Goal reached: ", here.task.title),
       h("div", { class: "small muted" }, "Next up · ", `${next.index + 1} of ${here.session.tasks.length}`),
       h("div", { class: "flow-next" }, next.task.title),
-      h("div", { class: "row" }, h("button", { class: "primary", onclick: () => go(next, planHref) }, label), stay),
+      h("div", { class: "row" }, h("button", { class: "primary", "data-hotkey": "space", onclick: () => go(next, planHref) }, label), stay),
     );
     let left = AUTO_ADVANCE_SECONDS;
     if (auto) countdown = window.setInterval(() => {
@@ -88,7 +88,7 @@ export function completeTask(id: string | null, opts: { stillPlaying?: boolean }
       h(
         "div",
         { class: "row" },
-        next ? h("button", { class: "primary", onclick: () => go(next, planHref) }, "Start next session") : "",
+        next ? h("button", { class: "primary", "data-hotkey": "space", onclick: () => go(next, planHref) }, "Start next session") : "",
         h("button", { onclick: () => go(undefined, planHref) }, "Back to the plan"),
         h("button", { onclick: () => dismissFlow() }, "Keep practising"),
       ),

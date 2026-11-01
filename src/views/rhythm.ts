@@ -81,7 +81,7 @@ export const rhythmView: View = (root, params) => {
   const strumsEl = h("div", { class: "big-stat" }, "–");
   const spreadEl = h("div", { class: "big-stat" }, "–");
   const offsetEl = h("div", { class: "small muted" });
-  const runBtn = h("button", { class: "primary big-btn", onclick: () => void toggleRun() }, "▶ Start");
+  const runBtn = h("button", { class: "primary big-btn", "data-hotkey": "space", onclick: () => void toggleRun() }, "▶ Start");
   const countIn = h("input", { type: "checkbox" }) as HTMLInputElement;
   countIn.addEventListener("change", () => (countInOnly = countIn.checked));
 

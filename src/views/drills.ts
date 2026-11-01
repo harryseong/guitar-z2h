@@ -190,7 +190,7 @@ export const changesView: View = (root, params) => {
   const timer = h("div", { class: "timer" }, `${DURATION}`);
   const counter = h("div", { class: "counter" }, "0");
   const result = h("div", { class: "result" });
-  const startBtn = h("button", { class: "primary", onclick: () => void begin() }, "▶ Start 60 seconds");
+  const startBtn = h("button", { class: "primary", "data-hotkey": "space", onclick: () => void begin() }, "▶ Start 60 seconds");
   const best = () => getScore(`changes.${key}`).best;
   const bestEl = h("span", { class: "muted small" });
 

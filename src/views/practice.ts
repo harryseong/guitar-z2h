@@ -11,7 +11,7 @@ export const practiceView: View = (root, params) => {
   let timer = 0;
 
   const clock = h("div", { class: "timer" });
-  const toggle = h("button", { class: "primary", onclick: () => (timer ? pause() : start()) }, "Start timer");
+  const toggle = h("button", { class: "primary", "data-hotkey": "space", onclick: () => (timer ? pause() : start()) }, "Start timer");
   const render = () => {
     const t = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
     clock.textContent = t;

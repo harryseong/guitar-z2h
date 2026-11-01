@@ -85,7 +85,7 @@ export const warmupView: View = (root, params) => {
   const timeBar = h("div", { class: "progress-fill" });
   const accEl = h("div", { class: "big-stat" }, "–");
   const heardEl = h("div", { class: "big-stat" }, "–");
-  const runBtn = h("button", { class: "primary big-btn", onclick: () => void toggle() }, "▶ Start");
+  const runBtn = h("button", { class: "primary big-btn", "data-hotkey": "space", onclick: () => void toggle() }, "▶ Start");
 
   const describe = (n: SpiderNote) => `String ${6 - n.string} (${STANDARD_TUNING[n.string].label.replace(/\d/, "")}) · fret ${n.fret} · finger ${n.fret}`;
   const idle = () => {

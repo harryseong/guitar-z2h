@@ -12,6 +12,8 @@ export function micGate(onReady: () => void): HTMLElement {
     "button",
     {
       class: "primary",
+      // Only used by Space when the screen has no Start button of its own.
+      "data-hotkey": "space-fallback",
       onclick: async () => {
         btn.disabled = true;
         status.textContent = "Waiting for microphone permission…";

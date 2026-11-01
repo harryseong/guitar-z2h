@@ -222,3 +222,13 @@ input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--ok); }
 .warmup-next { font-weight: 700; min-height: 1.5em; }
 .task-goal { margin: 2px 0; font-weight: 600; }
 .lesson-bar + h1 { display: none; }
+/* Space-bar hint on the button it presses (only where there's a keyboard) */
+@media (hover: hover) and (pointer: fine) {
+  [data-hotkey="space"]::after,
+  main:not(:has([data-hotkey="space"])) [data-hotkey="space-fallback"]::after {
+    content: "Space";
+    margin-left: 6px; padding: 0 6px; border-radius: 4px;
+    font-size: 0.7rem; font-weight: 600; letter-spacing: 0.02em;
+    border: 1px solid currentColor; opacity: 0.6;
+  }
+}
