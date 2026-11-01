@@ -32,7 +32,7 @@ export function goalText(t: Task): string {
     case "changes":
       return `Make ${t.goal} clean changes between ${t.chords.join(" and ")} in 60 seconds.`;
     case "rhythm":
-      return `Strum with the click, keeping your timing within ±${PASS.rhythmSpreadMs} ms. You pass after ${PASS.rhythmMinStrums} steady strums.`;
+      return `Strum with the click for the full ${PASS.rhythmSeconds} seconds, keeping your timing within ±${PASS.rhythmSpreadMs} ms the whole way through.`;
     case "warmup":
       return `Play the finger exercise with the click and get ${Math.round(PASS.warmupAccuracy * 100)}% of the notes right over one full lap (up and back down).`;
     case "notes":
