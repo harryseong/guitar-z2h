@@ -74,7 +74,7 @@ function sessionEl(session: Session): HTMLElement {
             h("div", { class: "task-title" }, t.title, h("span", { class: "small muted" }, ` · ${t.minutes} min`)),
             h("div", { class: "small" }, t.detail),
           ),
-          href ? h("a", { class: "button", href }, "Start") : null,
+          h("a", { class: "button", href }, "Start"),
         );
       }),
     ),
@@ -105,7 +105,7 @@ export const levelView: View = (root, params) => {
     h(
       "p",
       { class: "muted small" },
-      "Tasks with a Start button tick themselves off when you reach the goal. You can also tick any task by hand.",
+      "Press Start on any task and the app walks you through the rest of the session, moving on by itself as you hit each goal. You can also tick tasks by hand.",
     ),
   );
   return () => {};

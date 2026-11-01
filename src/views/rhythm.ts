@@ -4,7 +4,8 @@ import { OnsetDetector, gridOffset, mean, stdDev } from "../audio/onset";
 import { rms } from "../audio/pitch";
 import { h, type View } from "../ui/dom";
 import { levelMeter, micGate } from "../ui/micGate";
-import { progress, recordScore } from "../ui/storage";
+import { completeTask } from "../ui/lessonFlow";
+import { recordScore } from "../ui/storage";
 
 /** Eighth-note slots for one bar: "D", "U" or "" (hand moves but misses). */
 const PATTERNS: Record<string, string[]> = {
@@ -149,7 +150,7 @@ export const rhythmView: View = (root, params) => {
         listening = false;
         const spread = stdDev(offsets);
         recordScore(`rhythm.${met.bpm}`, Math.round(spread));
-        if (task && offsets.length >= 16 && spread < 40) progress.mark(task);
+        if (task && offsets.length >= 16 && spread < 40) completeTask(task);
         verdict.textContent = `${offsets.length} strums scored. ${rating(spread)}.`;
       }
       return;

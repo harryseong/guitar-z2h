@@ -7,7 +7,8 @@ import { NOTE_NAMES, STANDARD_TUNING, freqToMidi, pitchClass } from "../music/no
 import { chordDiagram } from "../ui/chordDiagram";
 import { h, type View } from "../ui/dom";
 import { levelMeter, micGate } from "../ui/micGate";
-import { getScore, progress, recordScore } from "../ui/storage";
+import { completeTask } from "../ui/lessonFlow";
+import { getScore, recordScore } from "../ui/storage";
 
 /** Frames (~80ms each) a chord must be heard before it counts. */
 const HOLD_FRAMES = 3;
@@ -148,7 +149,7 @@ export const chordCheckView: View = (root, params) => {
     if (hold >= HOLD_FRAMES) {
       got.add(c.name);
       render();
-      if (task && chords.every((s) => got.has(s.name))) progress.mark(task);
+      if (task && chords.every((s) => got.has(s.name))) completeTask(task);
       const next = chords.findIndex((s) => !got.has(s.name));
       if (next >= 0) advanceTimer = window.setTimeout(() => select(next), 1200);
       else status.textContent = "All chords recognised ✓ Great work.";
@@ -229,7 +230,7 @@ export const changesView: View = (root, params) => {
     state = "done";
     const rec = recordScore(`changes.${key}`, count);
     const metGoal = goal > 0 && count >= goal;
-    if (task && metGoal) progress.mark(task);
+    if (task && metGoal) completeTask(task);
     result.replaceChildren(
       h("h2", {}, `${count} changes`),
       h(
@@ -419,7 +420,7 @@ export const notesView: View = (root, params) => {
       prompt.classList.add("ok");
       feedback.textContent = `✓ ${NOTE_NAMES[targetPc]} – fret ${n - open}`;
       renderStats();
-      if (task && correct >= 10) progress.mark(task);
+      if (task && correct >= 10) completeTask(task);
       nextTimer = window.setTimeout(next, 1100);
     }
   }, 60);

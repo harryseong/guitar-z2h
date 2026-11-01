@@ -374,9 +374,9 @@ export function allTasks(level: Level): LessonTask[] {
 }
 
 /** App route that runs a lesson task (and ticks it off when you hit the goal), or null for off-screen practice. */
-export function lessonTaskHref(lt: LessonTask): string | null {
-  const href = taskHref(lt.task);
-  if (!href) return null;
+export function lessonTaskHref(lt: LessonTask): string {
+  // Off-screen practice gets a simple timer page so the lesson flow never dead-ends.
+  const href = taskHref(lt.task) ?? "#/practice";
   return `${href}${href.includes("?") ? "&" : "?"}task=${encodeURIComponent(lt.id)}`;
 }
 
@@ -395,4 +395,36 @@ export function taskHref(t: Task): string | null {
     case "practice":
       return null;
   }
+}
+
+export interface TaskLocation {
+  level: Level;
+  week: Week;
+  session: Session;
+  /** Position within the session. */
+  index: number;
+  task: LessonTask;
+}
+
+/** Every task of a level in lesson order, with where it sits. */
+export function taskLocations(level: Level): TaskLocation[] {
+  return level.weeks.flatMap((week) =>
+    week.sessions.flatMap((session) => session.tasks.map((task, index) => ({ level, week, session, index, task }))),
+  );
+}
+
+export function locateTask(id: string): TaskLocation | undefined {
+  for (const level of LEVELS) {
+    const found = taskLocations(level).find((l) => l.task.id === id);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+/** The task after `id` in the same level, or undefined at the end of the level. */
+export function nextTaskAfter(id: string): TaskLocation | undefined {
+  const here = locateTask(id);
+  if (!here) return undefined;
+  const all = taskLocations(here.level);
+  return all[all.findIndex((l) => l.task.id === id) + 1];
 }

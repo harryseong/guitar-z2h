@@ -11,7 +11,7 @@ export const homeView: View = (root) => {
       for (const s of week.sessions)
         for (const t of s.tasks)
           if (!p[t.id]) {
-            next = { level: level.title, session: `${week.title} › ${s.title}`, task: t.title, href: lessonTaskHref(t) ?? `#/lessons/${level.id}` };
+            next = { level: level.title, session: `${week.title} › ${s.title}`, task: t.title, href: lessonTaskHref(t) };
             break outer;
           }
   const level1 = LEVELS[0];

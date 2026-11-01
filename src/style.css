@@ -173,3 +173,24 @@ input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--ok); }
   .chord-name { font-size: 2.4rem; }
   .nav a { padding: 4px 8px; }
 }
+
+/* Lesson flow */
+.lesson-bar { background: var(--surface); border: 1px solid var(--accent); border-radius: var(--radius); padding: 12px 16px; margin: 12px 0; }
+.lesson-bar-top { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.lesson-bar-task { font-weight: 700; margin-top: 4px; }
+.lesson-bar-actions { margin-bottom: 0; }
+.flow-dots { display: flex; gap: 6px; margin-right: auto; }
+.flow-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); }
+.flow-dot.done { background: var(--ok); }
+.flow-dot.current { outline: 2px solid var(--accent); outline-offset: 2px; }
+.small-btn { min-height: 32px; padding: 4px 12px; font-size: 0.875rem; }
+.flow-sheet {
+  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+  width: min(560px, calc(100% - 32px)); z-index: 20;
+  background: var(--surface); border: 1px solid var(--ok); border-radius: var(--radius);
+  padding: 16px; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.25);
+  animation: slide-up 0.25s ease-out;
+}
+.flow-done { color: var(--ok); font-weight: 700; }
+.flow-next { font-size: 1.15rem; font-weight: 700; margin: 2px 0 4px; }
+@keyframes slide-up { from { transform: translate(-50%, 20px); opacity: 0; } }

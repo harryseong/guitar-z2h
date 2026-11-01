@@ -13,7 +13,7 @@ Everything runs in the browser. Audio is analysed locally and never leaves your 
 | **One-minute changes** | Classic chord-change drill: switch between two chords as many times as you can in 60 seconds. The app counts each change it hears and tracks your best score. |
 | **Find the note** | Fretboard trainer: the app names a note and string, you play it, it checks the pitch. |
 | **Rhythm** | Metronome with strumming patterns, plus a timing check that scores how evenly you strum against the click. "Count-in only" mode tests your inner clock. |
-| **Lesson plans** | Level 1 "The Comeback" is a full 4-week plan (12 sessions, 20-30 min each) for someone returning to the guitar. Levels 2-4 (Foundations, Intermediate, Expert) are outlined. Tasks launch the right drill and tick themselves off when you hit the goal. Progress is saved in your browser. |
+| **Lesson plans** | Level 1 "The Comeback" is a full 4-week plan (12 sessions, 20-30 min each) for someone returning to the guitar. Levels 2-4 (Foundations, Intermediate, Expert) are outlined. Press Start and the app walks you through a session: each task opens the right drill, ticks itself off when you hit the goal, and moves on to the next one by itself. Progress is saved in your browser. |
 
 ## Run it
 

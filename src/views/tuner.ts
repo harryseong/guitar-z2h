@@ -3,11 +3,13 @@ import { detectPitch, rms } from "../audio/pitch";
 import { STANDARD_TUNING, freqToMidi, midiToFreq, nearestString, noteFromFreq } from "../music/notes";
 import { h, type View } from "../ui/dom";
 import { levelMeter, micGate } from "../ui/micGate";
+import { completeTask } from "../ui/lessonFlow";
 import { load, save } from "../ui/storage";
 
 const IN_TUNE_CENTS = 5;
 
-export const tunerView: View = (root) => {
+export const tunerView: View = (root, params) => {
+  const task = params.get("task");
   let a4 = load("a4", 440);
   let target: number | "auto" = "auto";
   const recent: number[] = [];
@@ -128,6 +130,7 @@ export const tunerView: View = (root) => {
     if (inTune && idx >= 0 && !tuned.has(idx)) {
       tuned.add(idx);
       renderButtons();
+      if (task && tuned.size === STANDARD_TUNING.length) completeTask(task);
     }
   }, 50);
 
