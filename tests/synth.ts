@@ -11,10 +11,11 @@ function rng(seed: number) {
 /**
  * Rough plucked-string model: harmonics with 1/h amplitude, slight
  * inharmonicity and detune, decaying envelope, plus a little noise.
+ * `ring` stretches the decay (2 = rings twice as long).
  */
 export function pluck(
   midis: number[],
-  { sampleRate = 48000, length = 8192, noise = 0.01, seed = 1, detuneCents = 4 } = {},
+  { sampleRate = 48000, length = 8192, noise = 0.01, seed = 1, detuneCents = 4, ring = 1 } = {},
 ): Float32Array {
   const r = rng(seed);
   const out = new Float32Array(length);
@@ -28,7 +29,7 @@ export function pluck(
       const a = (amp / h) * (h === 1 ? 0.8 : 1);
       for (let i = 0; i < length; i++) {
         const t = i / sampleRate;
-        out[i] += a * Math.exp(-t * (1 + h)) * Math.sin(2 * Math.PI * f * t + phase0 * h);
+        out[i] += a * Math.exp((-t * (1 + h)) / ring) * Math.sin(2 * Math.PI * f * t + phase0 * h);
       }
     }
   }

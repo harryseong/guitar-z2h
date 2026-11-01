@@ -1,6 +1,6 @@
 import { engine, loop } from "../audio/engine";
 import { Metronome } from "../audio/metronome";
-import { OnsetDetector, gridOffset, mean, stdDev } from "../audio/onset";
+import { FluxOnsetDetector, gridOffset, mean, robustSpread } from "../audio/onset";
 import { rms } from "../audio/pitch";
 import { PASS } from "../lessons/plan";
 import { findChord } from "../music/chords";
@@ -39,7 +39,7 @@ export const rhythmView: View = (root, params) => {
   const task = params.get("task");
   let countInOnly = false;
 
-  const onsets = new OnsetDetector();
+  let onsets = new FluxOnsetDetector(engine.sampleRate);
   const offsets: number[] = [];
   let phase: Phase = "idle";
   let runStart = 0; // audio time (s) of the first count-in click
@@ -87,6 +87,9 @@ export const rhythmView: View = (root, params) => {
 
   const beatMs = () => (60 / met.bpm) * 1000;
   const step = () => beatMs() / (PATTERNS[patternKey].includes("U") ? 2 : 1);
+  /** Further than this from the typical offset = a stray, not a timing error. */
+  const maxDev = () => Math.min(120, step() * 0.35);
+  const timing = () => robustSpread(offsets, maxDev());
   const playStartMs = () => runStart * 1000 + COUNT_IN_BEATS * beatMs();
 
   const setPhase = (p: Phase, title: string, detail = "") => {
@@ -138,6 +141,7 @@ export const rhythmView: View = (root, params) => {
       }
     }
     dismissFlow();
+    onsets = new FluxOnsetDetector(engine.sampleRate); // mic sample rate is known now
     met.muted = false;
     offsets.length = 0;
     strumsEl.textContent = spreadEl.textContent = "–";
@@ -151,24 +155,24 @@ export const rhythmView: View = (root, params) => {
   };
 
   const finishRun = () => {
-    const spread = stdDev(offsets);
-    if (offsets.length >= 4) recordScore(`rhythm.${met.bpm}`, Math.round(spread));
-    const enough = offsets.length >= PASS.rhythmMinStrums;
+    const { spread, kept } = timing();
+    if (kept >= 4) recordScore(`rhythm.${met.bpm}`, Math.round(spread));
+    const enough = kept >= PASS.rhythmMinStrums;
     const passed = enough && spread < PASS.rhythmSpreadMs;
     // In a lesson, stop so the click doesn't run under the "next up" panel.
     // In free practice, keep the metronome going.
     if (task) stopMetronome();
     if (passed) {
-      setPhase("done", `✓ Passed: ±${spread.toFixed(0)} ms (${rating(spread)})`, `${offsets.length} strums heard.`);
+      setPhase("done", `✓ Passed: ±${spread.toFixed(0)} ms (${rating(spread)})`, `${kept} strums on the beat.`);
       reportProgress(1, `Passed with ±${spread.toFixed(0)} ms`);
       if (task) completeTask(task);
     } else if (!enough) {
       setPhase(
         "done",
-        `Only ${offsets.length} strums heard`,
+        `Only ${kept} strums heard on the beat`,
         `The app needs at least ${PASS.rhythmMinStrums}. Strum a little harder or move closer to the mic, and keep going for the full ${PASS.rhythmSeconds} seconds. Press Start to try again.`,
       );
-      reportProgress(0, `Not passed: only ${offsets.length} strums heard`);
+      reportProgress(0, `Not passed: only ${kept} strums heard`);
     } else {
       setPhase(
         "done",
@@ -221,6 +225,7 @@ export const rhythmView: View = (root, params) => {
   idleText();
   reportProgress(0, "Not started yet. Press Start below.");
 
+  let lastPushMs = 0;
   const stop = loop(() => {
     if (!engine.running) return;
     const frame = engine.read(1024);
@@ -228,7 +233,11 @@ export const rhythmView: View = (root, params) => {
     meter.set(level);
     if ((phase !== "countin" && phase !== "playing") || !met.running) return;
     const nowMs = ctx.currentTime * 1000;
-    const isOnset = onsets.push(level, nowMs);
+    // Analyse on the audio clock, not the screen's: skip frames where no new
+    // audio has arrived (fast displays) so the detector sees a steady hop.
+    if (nowMs - lastPushMs < 10) return;
+    lastPushMs = nowMs;
+    const isOnset = onsets.push(frame, nowMs);
     const elapsed = nowMs - playStartMs();
     if (elapsed > PASS.rhythmSeconds * 1000) {
       // Ends on the clock, so stopping on time still scores.
@@ -239,7 +248,7 @@ export const rhythmView: View = (root, params) => {
       const left = Math.ceil(PASS.rhythmSeconds - elapsed / 1000);
       timeBar.style.width = `${(elapsed / 10 / PASS.rhythmSeconds).toFixed(1)}%`;
       if (phase === "playing") detailEl.textContent = `${left}s left`;
-      const spreadTxt = offsets.length >= 4 ? ` · timing ±${stdDev(offsets).toFixed(0)} ms` : "";
+      const spreadTxt = offsets.length >= 4 ? ` · timing ±${timing().spread.toFixed(0)} ms` : "";
       reportProgress(elapsed / 1000 / PASS.rhythmSeconds, `${left}s left · ${offsets.length} strums${spreadTxt}`);
     }
     if (!isOnset || elapsed < -step() / 2) return; // ignore the count-in bar
@@ -248,9 +257,9 @@ export const rhythmView: View = (root, params) => {
     const m = mean(offsets);
     offsetEl.textContent = `On average ${Math.abs(m).toFixed(0)} ms ${m >= 0 ? "after" : "before"} the click (includes audio delay).`;
     if (offsets.length >= 4) {
-      const s = stdDev(offsets);
-      spreadEl.textContent = `±${s.toFixed(0)} ms`;
-      spreadEl.classList.toggle("good", s < PASS.rhythmSpreadMs);
+      const t = timing();
+      spreadEl.textContent = `±${t.spread.toFixed(0)} ms`;
+      spreadEl.classList.toggle("good", t.spread < PASS.rhythmSpreadMs);
     }
   }, 0);
 
