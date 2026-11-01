@@ -71,7 +71,11 @@ function hotkeyTarget(): HTMLButtonElement | undefined {
   );
 }
 const isSpace = (e: KeyboardEvent) => e.code === "Space" && !e.ctrlKey && !e.metaKey && !e.altKey;
-const typing = (e: KeyboardEvent) => (e.target as HTMLElement).closest?.("input, select, textarea, [contenteditable]") !== null;
+// Only real text entry should swallow Space; sliders and checkboxes shouldn't.
+const typing = (e: KeyboardEvent) =>
+  (e.target as HTMLElement).closest?.(
+    'input:not([type=range]):not([type=checkbox]):not([type=radio]):not([type=button]), select, textarea, [contenteditable]',
+  ) != null;
 document.addEventListener("keydown", (e) => {
   if (!isSpace(e) || typing(e)) return;
   e.preventDefault(); // no page scroll, and no double-press of a focused button
