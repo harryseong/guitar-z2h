@@ -7,9 +7,40 @@ export type Task =
   | { kind: "tune" }
   | { kind: "check"; chords: string[] }
   | { kind: "changes"; chords: string[]; goal: number }
-  | { kind: "rhythm"; bpm: number; pattern: string }
+  | { kind: "rhythm"; bpm: number; pattern: string; chords?: string[] }
+  | { kind: "warmup"; bpm: number; minutes: number }
   | { kind: "notes"; strings: number[] }
-  | { kind: "practice" };
+  | { kind: "practice"; minutes: number };
+
+/** Pass marks, shared by the lesson text and the drills that check them. */
+export const PASS = {
+  tuneCents: 5,
+  rhythmSeconds: 30,
+  rhythmSpreadMs: 40,
+  rhythmMinStrums: 16,
+  warmupAccuracy: 0.7,
+  notesToFind: 10,
+} as const;
+
+/** One sentence: what "done" means for a task. Shown above every drill. */
+export function goalText(t: Task): string {
+  switch (t.kind) {
+    case "tune":
+      return `Get all 6 strings in tune: each needle inside the green zone (±${PASS.tuneCents} cents).`;
+    case "check":
+      return `Play each chord until the app recognises it: ${t.chords.join(", ")}.`;
+    case "changes":
+      return `Make ${t.goal} clean changes between ${t.chords.join(" and ")} in 60 seconds.`;
+    case "rhythm":
+      return `Strum along for ${PASS.rhythmSeconds} seconds, keeping your timing within ±${PASS.rhythmSpreadMs} ms of the beat.`;
+    case "warmup":
+      return `Play the finger exercise with the click for ${t.minutes} minute${t.minutes > 1 ? "s" : ""}, getting ${Math.round(PASS.warmupAccuracy * 100)}% of the notes right.`;
+    case "notes":
+      return `Find and play ${PASS.notesToFind} notes on string${t.strings.length > 1 ? "s" : ""} ${t.strings.join(" & ")}.`;
+    case "practice":
+      return `Practise for ${t.minutes} minutes, then press Done.`;
+  }
+}
 
 export interface LessonTask {
   id: string;
@@ -44,67 +75,39 @@ export interface Level {
 }
 
 /* ---------- task builders (keep the data below readable) ---------- */
-const id = (_prefix: string) => ""; // replaced with a stable id below
+// Ids are assigned from each task's position further down.
+const base = (title: string, minutes: number, detail: string, task: Task): LessonTask => ({ id: "", title, minutes, detail, task });
 
-const tune = (): LessonTask => ({
-  id: id("t"),
-  title: "Tune up",
-  minutes: 2,
-  detail: "Tune all six strings. Pluck each string once and let it ring; aim for the needle inside ±5 cents.",
-  task: { kind: "tune" },
-});
+const tune = (): LessonTask =>
+  base("Tune up", 2, "Pluck one string at a time and let it ring. Turn the peg until the needle sits in the green zone and the string turns green.", { kind: "tune" });
 
-const spider = (bpm: number): LessonTask => ({
-  id: id("t"),
-  title: `Finger warm-up at ${bpm} bpm`,
-  minutes: 4,
-  detail:
-    "Chromatic 'spider': frets 1-2-3-4 on each string, low E to high e and back, one finger per fret. " +
-    "One note per click. Keep fingers close to the strings and press just behind the fret.",
-  task: { kind: "rhythm", bpm, pattern: "1 2 3 4" },
-});
+const spider = (bpm: number, minutes = 2): LessonTask =>
+  base(
+    `Finger warm-up at ${bpm} bpm`,
+    minutes,
+    "The 'spider' exercise. Play one note per click: frets 1, 2, 3, 4 on the low E string with fingers 1, 2, 3, 4, then the same on each string up to the high e, then back down with frets 4, 3, 2, 1. The screen shows the next note and turns each one green when it's right.",
+    { kind: "warmup", bpm, minutes },
+  );
 
-const check = (chords: string[], detail: string): LessonTask => ({
-  id: id("t"),
-  title: `Chord check: ${chords.join(", ")}`,
-  minutes: 5,
-  detail,
-  task: { kind: "check", chords },
-});
+const check = (chords: string[], detail: string): LessonTask =>
+  base(`Chord check: ${chords.join(", ")}`, 5, detail, { kind: "check", chords });
 
-const changes = (chords: string[], goal: number, detail = ""): LessonTask => ({
-  id: id("t"),
-  title: `One-minute changes: ${chords.join(" ↔ ")}`,
-  minutes: 3,
-  detail:
-    (detail ? detail + " " : "") +
-    `Switch as many times as you can in 60 seconds; the app counts each clean change it hears. Target: ${goal}.`,
-  task: { kind: "changes", chords, goal },
-});
+const changes = (chords: string[], goal: number, detail = ""): LessonTask =>
+  base(
+    `Chord changes: ${chords.join(" ↔ ")}`,
+    3,
+    `Press Start, then switch back and forth: strum once, and as soon as the app hears the chord, move to the other one.${detail ? " " + detail : ""}`,
+    { kind: "changes", chords, goal },
+  );
 
-const rhythm = (bpm: number, pattern: string, detail: string): LessonTask => ({
-  id: id("t"),
-  title: `Strumming: ${pattern} at ${bpm} bpm`,
-  minutes: 5,
-  detail,
-  task: { kind: "rhythm", bpm, pattern },
-});
+const rhythm = (bpm: number, pattern: string, detail: string, chords?: string[]): LessonTask =>
+  base(`Strumming: ${pattern} at ${bpm} bpm`, 5, detail, { kind: "rhythm", bpm, pattern, chords });
 
-const notes = (strings: number[], detail: string): LessonTask => ({
-  id: id("t"),
-  title: `Find the note: string${strings.length > 1 ? "s" : ""} ${strings.join(" & ")}`,
-  minutes: 4,
-  detail,
-  task: { kind: "notes", strings },
-});
+const notes = (strings: number[], detail: string): LessonTask =>
+  base(`Find the note: string${strings.length > 1 ? "s" : ""} ${strings.join(" & ")}`, 4, detail, { kind: "notes", strings });
 
-const practice = (title: string, minutes: number, detail: string): LessonTask => ({
-  id: id("t"),
-  title,
-  minutes,
-  detail,
-  task: { kind: "practice" },
-});
+const practice = (title: string, minutes: number, detail: string): LessonTask =>
+  base(title, minutes, detail, { kind: "practice", minutes });
 
 /* ---------- Level 1: The Comeback ---------- */
 
@@ -135,9 +138,9 @@ const comeback: Level = {
             spider(60),
             check(
               ["Em", "Am", "E", "A"],
-              "Strum each chord and hold it until the app recognises it. If it doesn't, pick each string one at a time to find the buzzing or muted note.",
+              "Form the chord shown, strum all the strings that aren't marked ×, and let it ring. If the app doesn't recognise it after a few strums, pick the strings one at a time: a buzz means a finger is too far from the fret, a dead note means a finger is touching the next string.",
             ),
-            check(["D", "G", "C", "Dm"], "Same again with the D, G and C family."),
+            check(["D", "G", "C", "Dm"], "Same as before, with the D, G and C family. Watch for the × strings: on D and Dm, only strum the top four."),
           ],
         },
         {
@@ -146,9 +149,14 @@ const comeback: Level = {
           tasks: [
             tune(),
             spider(60),
-            changes(["Em", "Am"], 20, "Only one finger shape moves over a string. Lift as a unit, land as a unit."),
+            changes(["Em", "Am"], 20, "Tip: the shape is the same, just moved over one string. Lift all fingers together and land them together."),
             changes(["A", "D"], 20),
-            rhythm(70, "D D D D", "Downstrokes on every click, one chord per bar. Focus on hitting exactly with the click."),
+            rhythm(
+              70,
+              "D D D D",
+              "Press Start. After 4 count-in clicks, strum down once on every click, following the chords on screen (one bar each). Keep going for 30 seconds even if a chord comes late.",
+              ["Em", "Am", "Em", "Am"],
+            ),
           ],
         },
         {
@@ -157,10 +165,15 @@ const comeback: Level = {
           tasks: [
             tune(),
             spider(66),
-            changes(["G", "C"], 20, "Watch your third finger: it's the anchor that moves from the low E string to the A string."),
+            changes(["G", "C"], 20, "Tip: your third finger is the anchor. It moves from the low E string (G) to the A string (C)."),
             changes(["C", "D"], 20),
             changes(["G", "D"], 20),
-            rhythm(70, "D D D D", "Play G for a bar, C for a bar, D for a bar, G for a bar. Keep your hand moving even if a chord is late."),
+            rhythm(
+              70,
+              "D D D D",
+              "Press Start. Strum down on every click, following the chords on screen, one bar each. Keep your strumming hand moving even if a chord is late.",
+              ["G", "C", "D", "G"],
+            ),
           ],
         },
       ],
@@ -176,10 +189,15 @@ const comeback: Level = {
           tasks: [
             tune(),
             spider(72),
-            changes(["C", "Am"], 30, "Fingers 1 and 2 never move. Only finger 3 changes strings."),
+            changes(["C", "Am"], 30, "Tip: fingers 1 and 2 never move. Only finger 3 changes strings."),
             changes(["G", "Em"], 30),
             changes(["Am", "Dm"], 25),
-            rhythm(70, "D DU D DU", "Add upstrokes on the 'and' of beats 2 and 4. Your hand keeps moving down-up the whole time; it just misses the strings sometimes."),
+            rhythm(
+              70,
+              "D DU D DU",
+              "New pattern: follow the D (down) and U (up) boxes on screen. Your hand keeps moving down-up all the time and only touches the strings on the marked boxes.",
+              ["C", "Am", "C", "Am"],
+            ),
           ],
         },
         {
@@ -189,8 +207,8 @@ const comeback: Level = {
             tune(),
             changes(["E", "Am"], 30),
             changes(["D", "A"], 30),
-            rhythm(76, "D DU D DU", "G, Em, C, D, one bar each, four times through without stopping."),
-            notes([6], "Learn the natural notes on the low E string, frets 0 to 12. You need these for barre chords next week."),
+            rhythm(76, "D DU D DU", "The '50s progression' behind countless songs. Follow the chords on screen, one bar each, without stopping.", ["G", "Em", "C", "D"]),
+            notes([6], "The app names a note. Find it on the low E string and pluck it. Knowing these notes is what makes barre chords easy next week. Tip: E is open, F is fret 1, G is fret 3, A is fret 5."),
           ],
         },
         {
@@ -199,9 +217,9 @@ const comeback: Level = {
           tasks: [
             tune(),
             spider(80),
-            notes([6, 5], "Low E and A strings. Say the note out loud before you play it."),
-            changes(["G", "C"], 35, "Benchmark: compare with your week 1 score."),
-            rhythm(80, "D DU D DU", "C, Am, Dm, G, one bar each. Keep the strumming hand moving through every change."),
+            notes([6, 5], "Now the low E and A strings. Say the note out loud before you play it. Tip: on the A string, B is fret 2, C is fret 3, D is fret 5."),
+            changes(["G", "C"], 35, "This is a benchmark: compare it with your week 1 score."),
+            rhythm(80, "D DU D DU", "Follow the chords on screen, one bar each. Keep the strumming hand moving through every change.", ["C", "Am", "Dm", "G"]),
           ],
         },
       ],
@@ -217,10 +235,13 @@ const comeback: Level = {
           title: "Session 1 · Approaching F",
           tasks: [
             tune(),
-            check(["Fmaj7", "F"], "Fmaj7 first. Then F: roll your first finger slightly onto its bony edge, keep your thumb low behind the neck, and pull back with the arm rather than squeezing."),
+            check(
+              ["Fmaj7", "F"],
+              "Fmaj7 first; it's F without the barre. Then F: lay your first finger across all six strings at fret 1, rolled slightly onto its bony edge. Keep your thumb low behind the neck and pull back with your arm instead of squeezing.",
+            ),
             changes(["C", "Fmaj7"], 30),
-            changes(["C", "F"], 15, "Accept buzzing for now. The goal is getting the shape down fast."),
-            practice("Barre strength", 3, "Hold the F shape for 10 seconds, release for 10. Five times. Stop if your hand cramps."),
+            changes(["C", "F"], 15, "Some buzzing is fine for now. The goal is getting the shape down quickly."),
+            practice("Barre strength", 3, "Hold the F shape for 10 seconds, then relax for 10 seconds. Repeat 5 times. Stop if your hand cramps."),
           ],
         },
         {
@@ -228,10 +249,15 @@ const comeback: Level = {
           title: "Session 2 · Seventh chords",
           tasks: [
             tune(),
-            check(["G7", "C7", "D7", "A7", "E7", "B7"], "Seventh chords add tension that wants to resolve. Hear how G7 pulls towards C."),
+            check(["G7", "C7", "D7", "A7", "E7", "B7"], "Seventh chords add tension that wants to resolve. After each one, listen to how G7 pulls towards C."),
             changes(["G7", "C"], 30),
             changes(["E7", "A7"], 30),
-            rhythm(80, "D DU UDU", "The 'campfire' pattern: Down, Down-Up, (miss), Up-Down-Up. Say it out loud first."),
+            rhythm(
+              80,
+              "D DU UDU",
+              "The 'campfire' pattern: Down, Down-Up, (miss), Up-Down-Up. Say it out loud once before you press Start, then follow the boxes on screen.",
+              ["G7", "C", "G7", "C"],
+            ),
           ],
         },
         {
@@ -241,11 +267,9 @@ const comeback: Level = {
             tune(),
             changes(["A7", "B7"], 25),
             changes(["E7", "B7"], 25),
-            rhythm(
-              80,
-              "D DU UDU",
-              "12-bar blues: E7 ×4 bars, A7 ×2, E7 ×2, B7, A7, E7, B7. Loop it three times without stopping.",
-            ),
+            rhythm(80, "D DU UDU", "A 12-bar blues. Follow the chords on screen, one bar each, and loop it as many times as you can.", [
+              "E7", "E7", "E7", "E7", "A7", "A7", "E7", "E7", "B7", "A7", "E7", "B7",
+            ]),
             changes(["F", "G"], 15),
           ],
         },
@@ -261,10 +285,10 @@ const comeback: Level = {
           title: "Session 1 · Bm and the pop progression",
           tasks: [
             tune(),
-            check(["Bm"], "Same barre ideas as F, from the A string at the 2nd fret. Mute the low E with the tip of your first finger."),
+            check(["Bm"], "The same barre idea as F, starting from the A string at fret 2. Mute the low E string with the tip of your first finger."),
             changes(["D", "Bm"], 20),
             changes(["G", "Bm"], 20),
-            rhythm(84, "D DU UDU", "G, D, Em, C (the I–V–vi–IV behind hundreds of songs). Then try D, A, Bm, G."),
+            rhythm(84, "D DU UDU", "The I–V–vi–IV progression behind hundreds of pop songs. Follow the chords on screen, one bar each.", ["G", "D", "Em", "C"]),
           ],
         },
         {
@@ -276,9 +300,9 @@ const comeback: Level = {
             practice(
               "Learn a song",
               15,
-              "Pick a song you love that uses these chords. Learn the chord sheet section by section, then play it with the recording. Don't stop for mistakes.",
+              "Pick a song you love that uses these chords and look up its chord sheet. Learn it one section at a time, then play along with the recording. Don't stop for mistakes.",
             ),
-            rhythm(90, "D DU UDU", "Play the song's progression with the metronome and check your timing score."),
+            rhythm(90, "D DU UDU", "Play your song's chords with the metronome. If it uses other chords, just follow the pattern on screen with the chords shown.", ["G", "D", "Em", "C"]),
           ],
         },
         {
@@ -290,7 +314,7 @@ const comeback: Level = {
             changes(["Am", "E"], 40),
             changes(["C", "F"], 30),
             changes(["D", "Bm"], 30),
-            practice("Play your song for someone", 5, "Or record yourself. Performing exposes things practice doesn't. Then move on to Level 2."),
+            practice("Play your song for someone", 5, "Play it for someone, or record yourself. Performing exposes things practice doesn't. Then move on to Level 2."),
           ],
         },
       ],
@@ -389,9 +413,11 @@ export function taskHref(t: Task): string | null {
     case "changes":
       return `#/drills/changes?chords=${encodeURIComponent(t.chords.join(","))}&goal=${t.goal}`;
     case "rhythm":
-      return `#/rhythm?bpm=${t.bpm}&pattern=${encodeURIComponent(t.pattern)}`;
+      return `#/rhythm?bpm=${t.bpm}&pattern=${encodeURIComponent(t.pattern)}${t.chords ? `&chords=${encodeURIComponent(t.chords.join(","))}` : ""}`;
     case "notes":
       return `#/drills/notes?strings=${t.strings.join(",")}`;
+    case "warmup":
+      return `#/warmup?bpm=${t.bpm}&minutes=${t.minutes}`;
     case "practice":
       return null;
   }

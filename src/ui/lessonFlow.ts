@@ -1,4 +1,4 @@
-import { lessonTaskHref, locateTask, nextTaskAfter, type TaskLocation } from "../lessons/plan";
+import { goalText, lessonTaskHref, locateTask, nextTaskAfter, type TaskLocation } from "../lessons/plan";
 import { h } from "./dom";
 import { progress } from "./storage";
 
@@ -36,6 +36,10 @@ export function completeTask(id: string | null): void {
   const here = locateTask(id);
   progress.mark(id);
   document.querySelector(".flow-dot.current")?.classList.add("done");
+  if (progressFill?.isConnected) {
+    progressFill.style.width = "100%";
+    if (progressLabel) progressLabel.textContent = "Goal reached ✓";
+  }
   if (!here) return;
   const next = nextTaskAfter(id);
   const planHref = `#/lessons/${here.level.id}`;
@@ -84,15 +88,34 @@ export function completeTask(id: string | null): void {
   document.body.append(overlay);
 }
 
-/** Strip at the top of a drill opened from a lesson: where you are, plus skip / done controls. */
+let progressFill: HTMLElement | null = null;
+let progressLabel: HTMLElement | null = null;
+
+/**
+ * Drills call this as you work towards a lesson task's goal. It drives the
+ * progress bar in the lesson bar (and does nothing outside a lesson).
+ */
+export function reportProgress(fraction: number, label: string): void {
+  if (!progressFill?.isConnected || !progressLabel) return;
+  progressFill.style.width = `${Math.round(Math.max(0, Math.min(1, fraction)) * 100)}%`;
+  progressLabel.textContent = label;
+}
+
+/**
+ * Card at the top of a drill opened from a lesson: where you are in the
+ * session, what the goal is, how to do it, and live progress towards it.
+ */
 export function lessonBar(id: string): HTMLElement | null {
   const here = locateTask(id);
   if (!here) return null;
   const next = nextTaskAfter(id);
   const total = here.session.tasks.length;
+  const done = progress.get();
   const dots = here.session.tasks.map((t, i) =>
-    h("span", { class: `flow-dot${progress.get()[t.id] ? " done" : ""}${i === here.index ? " current" : ""}`, title: t.title }),
+    h("span", { class: `flow-dot${done[t.id] ? " done" : ""}${i === here.index ? " current" : ""}`, title: t.title }),
   );
+  progressFill = h("div", { class: "progress-fill" });
+  progressLabel = h("div", { class: "small goal-progress-label" }, "Not started yet");
   return h(
     "div",
     { class: "lesson-bar" },
@@ -100,10 +123,12 @@ export function lessonBar(id: string): HTMLElement | null {
       "div",
       { class: "lesson-bar-top" },
       h("a", { href: `#/lessons/${here.level.id}`, class: "small" }, "← Plan"),
-      h("span", { class: "small muted" }, `${here.session.title} · task ${here.index + 1} of ${total}`),
+      h("span", { class: "small muted" }, `${here.session.title} · step ${here.index + 1} of ${total}`),
     ),
     h("div", { class: "lesson-bar-task" }, here.task.title),
-    h("div", { class: "small muted" }, here.task.detail),
+    h("div", { class: "goal" }, h("span", { class: "goal-label" }, "Goal"), goalText(here.task.task)),
+    h("div", { class: "goal-progress" }, h("div", { class: "progress" }, progressFill), progressLabel),
+    h("details", { class: "how", open: true }, h("summary", { class: "small" }, "How to do it"), h("div", { class: "small" }, here.task.detail)),
     h(
       "div",
       { class: "row lesson-bar-actions" },

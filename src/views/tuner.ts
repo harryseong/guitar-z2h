@@ -3,7 +3,7 @@ import { detectPitch, rms } from "../audio/pitch";
 import { STANDARD_TUNING, freqToMidi, midiToFreq, nearestString, noteFromFreq } from "../music/notes";
 import { h, type View } from "../ui/dom";
 import { levelMeter, micGate } from "../ui/micGate";
-import { completeTask } from "../ui/lessonFlow";
+import { completeTask, reportProgress } from "../ui/lessonFlow";
 import { load, save } from "../ui/storage";
 
 const IN_TUNE_CENTS = 5;
@@ -36,11 +36,13 @@ export const tunerView: View = (root, params) => {
       s.label.replace(/\d/, ""),
     ),
   );
-  const renderButtons = () =>
+  const renderButtons = () => {
     stringBtns.forEach((b, i) => {
       b.classList.toggle("selected", target === i);
       b.classList.toggle("done", tuned.has(i));
     });
+    reportProgress(tuned.size / STANDARD_TUNING.length, `${tuned.size} of ${STANDARD_TUNING.length} strings in tune`);
+  };
 
   const a4Input = h("input", { type: "number", min: 415, max: 466, value: a4, class: "a4" }) as HTMLInputElement;
   a4Input.addEventListener("change", () => {
@@ -61,7 +63,7 @@ export const tunerView: View = (root, params) => {
       centsEl,
       hint,
       h("div", { class: "strings" }, ...stringBtns),
-      h("p", { class: "muted small" }, "Auto mode picks the nearest string. Tap a string to lock onto it, tap again for auto."),
+      h("p", { class: "muted small" }, "Strings turn green once they've been in tune. The app works out which string you're playing; tap one to lock onto it, tap again to go back to auto."),
       h("div", { class: "row" }, meter.el, h("label", { class: "small muted" }, "A4 = ", a4Input, " Hz")),
     ),
     h(

@@ -1,6 +1,6 @@
 import { locateTask } from "../lessons/plan";
 import { h, type View } from "../ui/dom";
-import { completeTask } from "../ui/lessonFlow";
+import { completeTask, reportProgress } from "../ui/lessonFlow";
 
 /** Timer page for lesson tasks done away from the app (a song, barre holds…). */
 export const practiceView: View = (root, params) => {
@@ -12,7 +12,11 @@ export const practiceView: View = (root, params) => {
 
   const clock = h("div", { class: "timer" });
   const toggle = h("button", { class: "primary", onclick: () => (timer ? pause() : start()) }, "Start timer");
-  const render = () => (clock.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`);
+  const render = () => {
+    const t = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+    clock.textContent = t;
+    reportProgress(1 - left / total, left === total ? "Press Start timer when you begin" : `${t} left`);
+  };
   const pause = () => {
     clearInterval(timer);
     timer = 0;
@@ -37,7 +41,7 @@ export const practiceView: View = (root, params) => {
     h(
       "div",
       { class: "card center" },
-      h("p", {}, "This one is off-screen. Start the timer, play, and you'll move on when it's done."),
+      h("p", {}, "This one happens away from the screen. Read the steps above, press Start timer, and play. When the timer ends you'll move on to the next step, or press I'm done if you finish early."),
       clock,
       h("div", { class: "row", style: "justify-content:center" }, toggle, h("button", { onclick: () => completeTask(id) }, "I'm done")),
     ),

@@ -1,4 +1,4 @@
-import { LEVELS, allTasks, lessonTaskHref, type Level, type Session } from "../lessons/plan";
+import { LEVELS, allTasks, goalText, lessonTaskHref, type Level, type Session } from "../lessons/plan";
 import { h, type View } from "../ui/dom";
 import { progress } from "../ui/storage";
 
@@ -72,7 +72,8 @@ function sessionEl(session: Session): HTMLElement {
             "div",
             { class: "task-body" },
             h("div", { class: "task-title" }, t.title, h("span", { class: "small muted" }, ` · ${t.minutes} min`)),
-            h("div", { class: "small" }, t.detail),
+            h("div", { class: "small task-goal" }, h("span", { class: "goal-label" }, "Goal"), goalText(t.task)),
+            h("div", { class: "small muted" }, t.detail),
           ),
           h("a", { class: "button", href }, "Start"),
         );

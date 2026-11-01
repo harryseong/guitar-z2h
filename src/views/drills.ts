@@ -7,7 +7,8 @@ import { NOTE_NAMES, STANDARD_TUNING, freqToMidi, pitchClass } from "../music/no
 import { chordDiagram } from "../ui/chordDiagram";
 import { h, type View } from "../ui/dom";
 import { levelMeter, micGate } from "../ui/micGate";
-import { completeTask, dismissFlow } from "../ui/lessonFlow";
+import { PASS } from "../lessons/plan";
+import { completeTask, dismissFlow, reportProgress } from "../ui/lessonFlow";
 import { getScore, recordScore } from "../ui/storage";
 
 /** Frames (~80ms each) a chord must be heard before it counts. */
@@ -19,7 +20,8 @@ function chordsFromParams(params: URLSearchParams, fallback: string[]): ChordSha
   return shapes.length ? shapes : fallback.map((n) => findChord(n)!);
 }
 
-function drillTabs(active: string, params: URLSearchParams): HTMLElement {
+function drillTabs(active: string, params: URLSearchParams): HTMLElement | string {
+  if (params.get("task")) return ""; // in a lesson, stay focused on this drill
   const q = params.get("chords") ? `?chords=${encodeURIComponent(params.get("chords")!)}` : "";
   const tab = (id: string, label: string) =>
     h("a", { href: `#/drills/${id}${id === "notes" ? "" : q}`, class: `tab${active === id ? " active" : ""}` }, label);
@@ -83,6 +85,7 @@ export const chordCheckView: View = (root, params) => {
     const c = chords[index];
     big.replaceChildren(h("div", { class: "chord-name" }, c.name), chordDiagram(c, 170));
     big.classList.toggle("ok", got.has(c.name));
+    reportProgress(got.size / chords.length, `${got.size} of ${chords.length} chords recognised${got.size < chords.length ? ` · now playing: ${c.name}` : ""}`);
     status.textContent = got.has(c.name) ? "Nice, that rings clean ✓" : "Strum the chord and let it ring";
     grid.replaceChildren(
       ...chords.map((s, i) =>
@@ -187,7 +190,7 @@ export const changesView: View = (root, params) => {
   const timer = h("div", { class: "timer" }, `${DURATION}`);
   const counter = h("div", { class: "counter" }, "0");
   const result = h("div", { class: "result" });
-  const startBtn = h("button", { class: "primary", onclick: () => begin() }, "Start 60 seconds");
+  const startBtn = h("button", { class: "primary", onclick: () => void begin() }, "▶ Start 60 seconds");
   const best = () => getScore(`changes.${key}`).best;
   const bestEl = h("span", { class: "muted small" });
 
@@ -200,9 +203,17 @@ export const changesView: View = (root, params) => {
   const renderMeta = () => {
     bestEl.textContent = `Best: ${best()}${goal ? ` · Goal: ${goal}` : ""}`;
   };
+  const showCount = () => (counter.textContent = goal ? `${count} / ${goal}` : String(count));
 
-  const begin = () => {
-    if (!engine.running) return;
+  const begin = async () => {
+    if (!engine.running) {
+      try {
+        await engine.start();
+      } catch {
+        result.textContent = "Allow microphone access so the app can hear your chords, then press Start again.";
+        return;
+      }
+    }
     dismissFlow(); // "Go again" means stay on this drill
     state = "countdown";
     startBtn.hidden = true;
@@ -210,7 +221,7 @@ export const changesView: View = (root, params) => {
     count = 0;
     target = 0;
     hold = 0;
-    counter.textContent = "0";
+    showCount();
     let n = 3;
     current.replaceChildren(h("div", { class: "chord-name" }, String(n)));
     nextEl.textContent = `Get ready: ${chords[0].name}`;
@@ -229,6 +240,7 @@ export const changesView: View = (root, params) => {
 
   const finish = () => {
     state = "done";
+    if (goal) reportProgress(count >= goal ? 1 : count / goal, count >= goal ? `${count} changes: goal reached` : `${count} of ${goal}: press Go again to retry`);
     const rec = recordScore(`changes.${key}`, count);
     const metGoal = goal > 0 && count >= goal;
     if (task && metGoal) completeTask(task);
@@ -270,6 +282,8 @@ export const changesView: View = (root, params) => {
   );
   showTarget();
   renderMeta();
+  showCount();
+  if (goal) reportProgress(0, `Not started yet. Press Start: you need ${goal} changes in 60 seconds.`);
 
   const stop = loop((now) => {
     if (!engine.running) return;
@@ -279,13 +293,14 @@ export const changesView: View = (root, params) => {
     if (state !== "running") return;
     const left = Math.max(0, DURATION - (now - started) / 1000);
     timer.textContent = left.toFixed(0);
+    if (goal) reportProgress(count / goal, `${count} of ${goal} changes · ${left.toFixed(0)}s left`);
     if (left <= 0) return finish();
     if (!chroma) return;
     const c = chords[target % chords.length];
     hold = isChordPlayed(chroma, c).played ? hold + 1 : 0;
     if (hold >= HOLD_FRAMES) {
       if (target > 0) count++; // landing the first chord starts the clock, not a change
-      counter.textContent = String(count);
+      showCount();
       counter.classList.remove("pop");
       void counter.offsetWidth;
       counter.classList.add("pop");
@@ -359,6 +374,7 @@ export const notesView: View = (root, params) => {
   const renderStats = () => {
     const avg = times.length ? times.reduce((a, b) => a + b, 0) / times.length / 1000 : 0;
     stats.textContent = `Correct: ${correct}${times.length ? ` · average ${avg.toFixed(1)}s` : ""}`;
+    reportProgress(correct / PASS.notesToFind, `${Math.min(correct, PASS.notesToFind)} of ${PASS.notesToFind} notes found`);
   };
 
   root.append(
@@ -421,7 +437,7 @@ export const notesView: View = (root, params) => {
       prompt.classList.add("ok");
       feedback.textContent = `✓ ${NOTE_NAMES[targetPc]} – fret ${n - open}`;
       renderStats();
-      if (task && correct >= 10) completeTask(task);
+      if (task && correct >= PASS.notesToFind) completeTask(task);
       nextTimer = window.setTimeout(next, 1100);
     }
   }, 60);
