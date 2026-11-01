@@ -1,0 +1,19 @@
+{
+  "name": "guitar-z2h",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Guitar Zero to Hero: a practice app that listens to your guitar.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "vite": "^6.0.7",
+    "vitest": "^5.0.5"
+  }
+}
