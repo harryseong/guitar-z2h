@@ -4,7 +4,7 @@ import { OnsetDetector, gridOffset, mean, stdDev } from "../audio/onset";
 import { rms } from "../audio/pitch";
 import { h, type View } from "../ui/dom";
 import { levelMeter, micGate } from "../ui/micGate";
-import { completeTask } from "../ui/lessonFlow";
+import { completeTask, dismissFlow } from "../ui/lessonFlow";
 import { recordScore } from "../ui/storage";
 
 /** Eighth-note slots for one bar: "D", "U" or "" (hand moves but misses). */
@@ -95,6 +95,7 @@ export const rhythmView: View = (root, params) => {
       runBtn.textContent = "Start metronome";
       return;
     }
+    dismissFlow();
     met.muted = false;
     offsets.length = 0;
     offsetEl.textContent = spreadEl.textContent = "–";
@@ -134,6 +135,21 @@ export const rhythmView: View = (root, params) => {
   );
   renderPattern();
 
+  const finishRun = () => {
+    listening = false;
+    // Stop the click so it doesn't keep going under the "next up" panel.
+    met.stop();
+    runBtn.textContent = "Start metronome";
+    const spread = stdDev(offsets);
+    if (offsets.length >= 4) recordScore(`rhythm.${met.bpm}`, Math.round(spread));
+    const passed = offsets.length >= 16 && spread < 40;
+    verdict.textContent =
+      offsets.length < 16
+        ? `Only ${offsets.length} strums heard. Play through the whole ${RUN_SECONDS} seconds, a bit louder or closer to the mic.`
+        : `${offsets.length} strums scored. ${rating(spread)}.${passed ? "" : " Aim for a spread under ±40 ms: try 10 bpm slower."}`;
+    if (task && passed) completeTask(task);
+  };
+
   const stop = loop(() => {
     if (!engine.running) return;
     const frame = engine.read(1024);
@@ -141,20 +157,16 @@ export const rhythmView: View = (root, params) => {
     meter.set(level);
     if (!listening || !met.running) return;
     const nowMs = ctx.currentTime * 1000;
-    if (!onsets.push(level, nowMs)) return;
+    const isOnset = onsets.push(level, nowMs);
     const beatMs = (60 / met.bpm) * 1000;
     const start = runStart * 1000;
-    if (nowMs < start + beatMs * 4 - step() / 2) return; // ignore the count-in bar
+    // End the run on the clock, not on the next strum, so stopping on time still scores.
     if (nowMs > start + beatMs * 4 + RUN_SECONDS * 1000) {
-      if (listening) {
-        listening = false;
-        const spread = stdDev(offsets);
-        recordScore(`rhythm.${met.bpm}`, Math.round(spread));
-        if (task && offsets.length >= 16 && spread < 40) completeTask(task);
-        verdict.textContent = `${offsets.length} strums scored. ${rating(spread)}.`;
-      }
+      finishRun();
       return;
     }
+    if (!isOnset) return;
+    if (nowMs < start + beatMs * 4 - step() / 2) return; // ignore the count-in bar
     offsets.push(gridOffset(nowMs, start, step()));
     const m = mean(offsets);
     offsetEl.textContent = `${m > 0 ? "+" : ""}${m.toFixed(0)} ms ${m > 8 ? "(late)" : m < -8 ? "(early)" : ""}`;

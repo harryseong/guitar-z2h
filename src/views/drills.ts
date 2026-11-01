@@ -7,7 +7,7 @@ import { NOTE_NAMES, STANDARD_TUNING, freqToMidi, pitchClass } from "../music/no
 import { chordDiagram } from "../ui/chordDiagram";
 import { h, type View } from "../ui/dom";
 import { levelMeter, micGate } from "../ui/micGate";
-import { completeTask } from "../ui/lessonFlow";
+import { completeTask, dismissFlow } from "../ui/lessonFlow";
 import { getScore, recordScore } from "../ui/storage";
 
 /** Frames (~80ms each) a chord must be heard before it counts. */
@@ -203,6 +203,7 @@ export const changesView: View = (root, params) => {
 
   const begin = () => {
     if (!engine.running) return;
+    dismissFlow(); // "Go again" means stay on this drill
     state = "countdown";
     startBtn.hidden = true;
     result.replaceChildren();
