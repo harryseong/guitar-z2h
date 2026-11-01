@@ -2,13 +2,13 @@
 
 A running log of the problems we've found and fixed while building this app with Claude Code, and what each one teaches about building with an AI pair programmer. New issues go at the bottom with the next number.
 
-**Found by**: *Harry* = found by using the app · *Testing* = caught by Claude's own browser or unit tests before you saw it · *Review* = caught by reading the code after a change.
+**Found by**: *Harry* = found by using the app · *Setup* = surfaced while installing or running it on your Mac · *Testing* = caught by Claude's own browser or unit tests before you saw it · *Review* = caught by reading the code after a change.
 
 | # | Date | Found by | Issue | Root cause | Resolution | Fix commit | Lesson learned |
 |---|---|---|---|---|---|---|---|
 | 1 | 2026-11-01 | Testing | Chord recognition mistook an open A for Esus4/Amaj7 and Bm for Bm7. | The chord templates only listed the notes in each chord, but a real string also rings at its octave, fifth and third (harmonics), which look like extra chord notes. | Harmonic-aware templates, plus a slight preference for plain triads over 7th chords. | [`e2fa80c`](https://github.com/harryseong/guitar-z2h/commit/e2fa80c) | Test audio code against realistic synthetic input (harmonics, detune, noise), not pure sine waves. |
 | 2 | 2026-11-01 | Testing | The "Start listening" box stayed on screen after the mic was allowed. | The CSS `display: block` on cards overrode the browser's built-in rule that hides elements with `hidden`. | Added a global `[hidden] { display: none !important; }` rule. | [`e2fa80c`](https://github.com/harryseong/guitar-z2h/commit/e2fa80c) | Look at screenshots, don't just check that the page loads without errors. |
-| 3 | 2026-11-01 | Harry | `npm install` reported 3 vulnerabilities (2 critical). | They were in the test runner (vitest's tinypool and mocker), not the app, which has no runtime dependencies. | Upgraded vitest to v5; `npm audit` now reports 0. | [`c2149db`](https://github.com/harryseong/guitar-z2h/commit/c2149db) | Check whether a warning affects what ships before panicking, and fix it anyway with a proper upgrade rather than `npm audit fix --force`. |
+| 3 | 2026-11-01 | Setup | `npm install` reported 3 vulnerabilities (2 critical). | They were in the test runner (vitest's tinypool and mocker), not the app, which has no runtime dependencies. | Upgraded vitest to v5; `npm audit` now reports 0. | [`c2149db`](https://github.com/harryseong/guitar-z2h/commit/c2149db) | Check whether a warning affects what ships before panicking, and fix it anyway with a proper upgrade rather than `npm audit fix --force`. |
 | 4 | 2026-11-01 | Harry | Finishing a drill inside a lesson dead-ended, with no way on to the next task. | The lesson plan only linked out to the drills; there was no "flow" between them. | Lesson bar on each drill, a "Next up" panel that auto-advances within a session, a session summary at the end, and a timer page for off-screen tasks. | [`a1ed7e4`](https://github.com/harryseong/guitar-z2h/commit/a1ed7e4) | Design the journey between screens, not just the screens. The MVP spec said what each screen did but not how you move between them. |
 | 5 | 2026-11-01 | Review | A strumming run never finished if you stopped on time: no score, no tick, no advance. | The end of the run was checked only when another strum was heard. | End the run on the clock, independently of strums. | [`5593238`](https://github.com/harryseong/guitar-z2h/commit/5593238) | Time-based logic should be driven by the clock, not by input events. |
 | 6 | 2026-11-01 | Review | Pressing "Go again" during the 5-second "Next up" countdown still jumped to the next task mid-run. | Starting a new run didn't cancel the pending auto-advance. | Starting any run dismisses the panel. | [`5593238`](https://github.com/harryseong/guitar-z2h/commit/5593238) | Every automatic action needs a way to cancel it, and new user actions should cancel it. |
@@ -20,6 +20,12 @@ A running log of the problems we've found and fixed while building this app with
 | 12 | 2026-11-01 | Testing | The new strum detector counted occasional extra strums when a chord rang a long time. | Slow wobbles in a long-ringing chord crept over an adaptive threshold that had dropped very low. | A minimum level based on recent strums, and timing scores that ignore stray hits far from the beat. | [`dc982fd`](https://github.com/harryseong/guitar-z2h/commit/dc982fd) | A fix for missed detections can cause false ones. Test both directions. |
 | 13 | 2026-11-01 | Harry | After hitting a goal (e.g. 15/15 changes) you still had to wait for the timer. | Goals were only checked when the timer ended. | Pass the moment the goal is reached, with "Next now" or "Keep going". | [`a7ea1f3`](https://github.com/harryseong/guitar-z2h/commit/a7ea1f3) | Reward success immediately; don't make people wait to be told they've won. |
 | 14 | 2026-11-01 | Review | Auto-advance (#4) was built twice, once in the cloud session and once on Harry's Mac. | Your request reached both Claude sessions and both started on it. | Agreed that the cloud session writes all code and the session on your Mac only pulls and runs it. | none (process) | When several AI sessions can act on the same request, decide up front which one owns code changes. |
+
+## Open issues
+
+| # | Date | Found by | Issue | Notes |
+|---|---|---|---|---|
+| 15 | 2026-11-01 | Review | If you reach a goal mid-run, ignore the "Goal reached" panel and play until time runs out, the panel waits for a click instead of counting down to the next task. | Minor. Pressing "Keep going" does give the usual countdown at the end. |
 
 ## Takeaways for the next app
 
