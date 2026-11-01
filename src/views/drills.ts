@@ -293,7 +293,11 @@ export const changesView: View = (root, params) => {
     if (state !== "running") return;
     const left = Math.max(0, DURATION - (now - started) / 1000);
     timer.textContent = left.toFixed(0);
-    if (goal) reportProgress(count / goal, `${count} of ${goal} changes · ${left.toFixed(0)}s left`);
+    if (goal)
+      reportProgress(
+        count / goal,
+        count >= goal ? `✓ Goal reached: ${count} changes · ${left.toFixed(0)}s left to beat your best` : `${count} of ${goal} changes · ${left.toFixed(0)}s left`,
+      );
     if (left <= 0) return finish();
     if (!chroma) return;
     const c = chords[target % chords.length];
@@ -301,6 +305,8 @@ export const changesView: View = (root, params) => {
     if (hold >= HOLD_FRAMES) {
       if (target > 0) count++; // landing the first chord starts the clock, not a change
       showCount();
+      // Hit the goal before time's up: offer to move on now, run keeps going.
+      if (task && goal && count === goal) completeTask(task, { stillPlaying: true });
       counter.classList.remove("pop");
       void counter.offsetWidth;
       counter.classList.add("pop");

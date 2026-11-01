@@ -102,7 +102,7 @@ export const rhythmView: View = (root, params) => {
     setPhase(
       "idle",
       "Press Start when you're ready",
-      `You'll hear ${COUNT_IN_BEATS} clicks to count you in, then play for ${PASS.rhythmSeconds} seconds. Pass mark: timing within ±${PASS.rhythmSpreadMs} ms.`,
+      `You'll hear ${COUNT_IN_BEATS} clicks to count you in, then play for up to ${PASS.rhythmSeconds} seconds. You pass as soon as you've played ${PASS.rhythmMinStrums} steady strums (timing within ±${PASS.rhythmSpreadMs} ms).`,
     );
 
   met.onBeat = (beat) => {
@@ -142,6 +142,7 @@ export const rhythmView: View = (root, params) => {
     }
     dismissFlow();
     onsets = new FluxOnsetDetector(engine.sampleRate); // mic sample rate is known now
+    passedEarly = false;
     met.muted = false;
     offsets.length = 0;
     strumsEl.textContent = spreadEl.textContent = "–";
@@ -162,7 +163,11 @@ export const rhythmView: View = (root, params) => {
     // In a lesson, stop so the click doesn't run under the "next up" panel.
     // In free practice, keep the metronome going.
     if (task) stopMetronome();
-    if (passed) {
+    if (passedEarly && !passed) {
+      setPhase("done", `Run finished: ±${spread.toFixed(0)} ms`, "You'd already passed this task earlier in the run.");
+      reportProgress(1, "Passed earlier in the run");
+      if (task) completeTask(task);
+    } else if (passed) {
       setPhase("done", `✓ Passed: ±${spread.toFixed(0)} ms (${rating(spread)})`, `${kept} strums on the beat.`);
       reportProgress(1, `Passed with ±${spread.toFixed(0)} ms`);
       if (task) completeTask(task);
@@ -226,6 +231,7 @@ export const rhythmView: View = (root, params) => {
   reportProgress(0, "Not started yet. Press Start below.");
 
   let lastPushMs = 0;
+  let passedEarly = false;
   const stop = loop(() => {
     if (!engine.running) return;
     const frame = engine.read(1024);
@@ -247,7 +253,7 @@ export const rhythmView: View = (root, params) => {
     if (elapsed > 0) {
       const left = Math.ceil(PASS.rhythmSeconds - elapsed / 1000);
       timeBar.style.width = `${(elapsed / 10 / PASS.rhythmSeconds).toFixed(1)}%`;
-      if (phase === "playing") detailEl.textContent = `${left}s left`;
+      if (phase === "playing" && !passedEarly) detailEl.textContent = `${left}s left`;
       const spreadTxt = offsets.length >= 4 ? ` · timing ±${timing().spread.toFixed(0)} ms` : "";
       reportProgress(elapsed / 1000 / PASS.rhythmSeconds, `${left}s left · ${offsets.length} strums${spreadTxt}`);
     }
@@ -260,6 +266,13 @@ export const rhythmView: View = (root, params) => {
       const t = timing();
       spreadEl.textContent = `±${t.spread.toFixed(0)} ms`;
       spreadEl.classList.toggle("good", t.spread < PASS.rhythmSpreadMs);
+      // Enough steady strums already: pass now and offer to move on, while
+      // the run carries on for anyone who wants to keep playing.
+      if (task && !passedEarly && t.kept >= PASS.rhythmMinStrums && t.spread < PASS.rhythmSpreadMs) {
+        passedEarly = true;
+        setPhase("playing", `✓ Passed: ±${t.spread.toFixed(0)} ms`, "Keep strumming if you like, or move on.");
+        completeTask(task, { stillPlaying: true });
+      }
     }
   }, 0);
 

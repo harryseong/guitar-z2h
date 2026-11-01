@@ -31,8 +31,14 @@ function sessionDone(loc: TaskLocation): boolean {
  * done and shows a panel that moves on to the next task by itself. At the end
  * of a session it shows a summary instead and waits for you.
  */
-export function completeTask(id: string | null): void {
+export function completeTask(id: string | null, opts: { stillPlaying?: boolean } = {}): void {
   if (!id || overlay) return;
+  // Once a task is done, "Skip" in the lesson bar becomes the way forward.
+  const skip = document.querySelector<HTMLButtonElement>(".lesson-bar .skip-btn");
+  if (skip) {
+    skip.textContent = "Next →";
+    skip.classList.add("primary");
+  }
   const here = locateTask(id);
   progress.mark(id);
   document.querySelector(".flow-dot.current")?.classList.add("done");
@@ -46,18 +52,21 @@ export function completeTask(id: string | null): void {
   const sameSession = next && next.session.id === here.session.id;
 
   if (sameSession) {
-    const label = h("span", {}, `Next now (${AUTO_ADVANCE_SECONDS})`);
-    const stay = h("button", { onclick: () => dismissFlow() }, "Stay here");
+    // Reached the goal mid-drill: offer to move on, but don't yank the drill
+    // away with a countdown while you're still playing.
+    const auto = !opts.stillPlaying;
+    const label = h("span", {}, auto ? `Next now (${AUTO_ADVANCE_SECONDS})` : "Next now →");
+    const stay = h("button", { onclick: () => dismissFlow() }, auto ? "Stay here" : "Keep going");
     overlay = h(
       "div",
       { class: "flow-sheet", role: "status" },
-      h("div", { class: "flow-done" }, "✓ ", here.task.title),
+      h("div", { class: "flow-done" }, "✓ Goal reached: ", here.task.title),
       h("div", { class: "small muted" }, "Next up · ", `${next.index + 1} of ${here.session.tasks.length}`),
       h("div", { class: "flow-next" }, next.task.title),
       h("div", { class: "row" }, h("button", { class: "primary", onclick: () => go(next, planHref) }, label), stay),
     );
     let left = AUTO_ADVANCE_SECONDS;
-    countdown = window.setInterval(() => {
+    if (auto) countdown = window.setInterval(() => {
       left--;
       label.textContent = `Next now (${left})`;
       if (left <= 0) go(next, planHref);
@@ -134,7 +143,11 @@ export function lessonBar(id: string): HTMLElement | null {
       { class: "row lesson-bar-actions" },
       h("div", { class: "flow-dots" }, ...dots),
       h("button", { class: "small-btn", onclick: () => completeTask(id) }, "Mark done"),
-      next ? h("button", { class: "small-btn", onclick: () => go(next, `#/lessons/${here.level.id}`) }, "Skip →") : "",
+      next ? h(
+            "button",
+            { class: `small-btn skip-btn${done[id] ? " primary" : ""}`, onclick: () => go(next, `#/lessons/${here.level.id}`) },
+            done[id] ? "Next →" : "Skip →",
+          ) : "",
     ),
   );
 }

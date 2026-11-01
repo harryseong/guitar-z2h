@@ -43,6 +43,7 @@ export const warmupView: View = (root, params) => {
   let hits = 0;
   let played = 0;
   let hitThisNote = false;
+  let passedEarly = false;
   const lapState: CellState[] = seq.map(() => "");
 
   /* ---- fretboard: high e on top, like tab ---- */
@@ -89,7 +90,7 @@ export const warmupView: View = (root, params) => {
   const describe = (n: SpiderNote) => `String ${6 - n.string} (${STANDARD_TUNING[n.string].label.replace(/\d/, "")}) · fret ${n.fret} · finger ${n.fret}`;
   const idle = () => {
     phaseEl.textContent = "Press Start when you're ready";
-    detailEl.textContent = `You'll hear ${COUNT_IN_BEATS} clicks to count you in. Then play one note per click, following the highlighted square. Pass mark: ${Math.round(PASS.warmupAccuracy * 100)}% of notes right over ${minutes} minute${minutes > 1 ? "s" : ""}.`;
+    detailEl.textContent = `You'll hear ${COUNT_IN_BEATS} clicks to count you in. Then play one note per click, following the highlighted square. You pass once you get ${Math.round(PASS.warmupAccuracy * 100)}% of the notes right over one full lap (up and back down, ${seq.length} notes). The run lasts up to ${minutes} minute${minutes > 1 ? "s" : ""}.`;
     nextEl.textContent = `First note: ${describe(seq[0])}`;
   };
 
@@ -112,7 +113,7 @@ export const warmupView: View = (root, params) => {
     stopAll();
     const acc = played ? hits / played : 0;
     recordScore(`warmup.${met.bpm}`, Math.round(acc * 100));
-    const passed = acc >= PASS.warmupAccuracy;
+    const passed = acc >= PASS.warmupAccuracy || passedEarly;
     phaseEl.textContent = passed ? `✓ Passed: ${Math.round(acc * 100)}% of notes right` : `${Math.round(acc * 100)}% of notes right: not quite`;
     detailEl.textContent = passed
       ? "Your fingers are awake. Nice."
@@ -140,6 +141,7 @@ export const warmupView: View = (root, params) => {
     }
     dismissFlow();
     hits = played = 0;
+    passedEarly = false;
     lastIdx = -1;
     hitThisNote = false;
     lapState.fill("");
@@ -210,6 +212,12 @@ export const warmupView: View = (root, params) => {
       nextEl.textContent = describe(seq[idx]);
       paint(idx);
       if (played) accEl.textContent = `${Math.round((hits / played) * 100)}%`;
+      // One full lap at the pass mark is enough: offer to move on now.
+      if (task && !passedEarly && played >= seq.length && hits / played >= PASS.warmupAccuracy) {
+        passedEarly = true;
+        phaseEl.textContent = `✓ Passed: ${Math.round((hits / played) * 100)}% right`;
+        completeTask(task, { stillPlaying: true });
+      }
     }
     if (!hitThisNote && heardMidi === seq[idx].midi) {
       hitThisNote = true;
