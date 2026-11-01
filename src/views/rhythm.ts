@@ -137,9 +137,12 @@ export const rhythmView: View = (root, params) => {
 
   const finishRun = () => {
     listening = false;
-    // Stop the click so it doesn't keep going under the "next up" panel.
-    met.stop();
-    runBtn.textContent = "Start metronome";
+    // In a lesson, stop the click so it doesn't keep going under the "next up"
+    // panel. In free practice, keep the metronome going.
+    if (task) {
+      met.stop();
+      runBtn.textContent = "Start metronome";
+    }
     const spread = stdDev(offsets);
     if (offsets.length >= 4) recordScore(`rhythm.${met.bpm}`, Math.round(spread));
     const passed = offsets.length >= 16 && spread < 40;
